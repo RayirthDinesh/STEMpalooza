@@ -80,7 +80,7 @@ function startSpeechToText() {
 
     // handle recognition results
     recognition.onresult = function (event) {
-        const transcript = event.results[0][0].transcript;
+        const transcript = event.results[0][0].transcript; // adding into text box
         textBox.value = transcript;
     };
 
@@ -102,6 +102,7 @@ function startSpeechToText() {
 const conjunctionsToSkip = ['and', 'but', 'or', 'so', 'nor', 'for', 'yet'];
 const prepositionsToSkip = ['in', 'on', 'under', 'over', 'above', 'below', 'through', 'across', 'around', 'between', 'among', 'of', 'to', 'with', 'by', 'at'];
 const definiteArticlesToSkip = ['the'];
+const verbsToSkip = ['are']
 
 // function to parse ISO 8601 duration
 function parseISO8601Duration(duration) {
@@ -124,36 +125,41 @@ function generateVideosForSentence(sentence) {
             const word = words[index].toLowerCase();
 
             // check conditions before fetching video
-            if (word.length > 2) {
+            if (word.length > 2 && !conjunctionsToSkip.includes(word) && !prepositionsToSkip.includes(word) && !definiteArticlesToSkip.includes(word) && !verbsToSkip.includes(word)) {
                 fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(word)}&type=video&channelId=${asluChannelId}&key=${apiKey}`)
                     .then(response => response.json())
                     .then(data => {
-                        const videoId = data.items.length > 0 ? data.items[0].id.videoId : '';
-                        displayVideo(videoId);
+                      
+                            const videoId = data.items.length > 0 ? data.items[0].id.videoId : '';
+                            const videoTitle = data.items.length > 0 ? data.items[0].snippet.title : '';
 
-                        // automatically play the video
-                        playVideo();
+                            if (videoTitle.length <= 10) {
+                            displayVideo(videoId);
 
-                        // get video duration from YouTube Data API
-                        fetch(`https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=contentDetails&key=${apiKey}`)
-                            .then(response => response.json())
-                            .then(data => {
-                                const duration = parseISO8601Duration(data.items[0].contentDetails.duration);
-                                
-                                // clear video after the video duration
-                                setTimeout(() => {
-                                    clearVideo();
-                                    // proceed to the next word
-                                    searchAndDisplayWord(index + 1);
-                                }, duration * 1000); // convert duration to milliseconds
-                            })
-                            .catch(error => {
-                                console.error('Error fetching video duration:', error);
+                            // automatically play the video
+                            playVideo();
 
-                                // proceed to the next word in case of an error
-                                setTimeout(() => searchAndDisplayWord(index + 1), 0);
-                            });
-                    })
+                            // get video duration from YouTube Data API
+                            fetch(`https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=contentDetails&key=${apiKey}`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    const duration = parseISO8601Duration(data.items[0].contentDetails.duration);
+
+                                    // clear video after the video duration
+                                    setTimeout(() => {
+                                        clearVideo();
+                                        // proceed to the next word
+                                        searchAndDisplayWord(index + 1);
+                                    }, duration * 1000); // convert duration to milliseconds
+                                })
+                                .catch(error => {
+                                    console.error('Error fetching video duration:', error);
+
+                                    // proceed to the next word in case of an error
+                                    setTimeout(() => searchAndDisplayWord(index + 1), 0);
+                                });
+                        }
+                    }) // Add closing parenthesis and semicolon here
                     .catch(error => {
                         console.error('Error fetching video:', error);
 
@@ -161,12 +167,12 @@ function generateVideosForSentence(sentence) {
                         setTimeout(() => searchAndDisplayWord(index + 1), 0);
                     });
             } else {
-                // proceed to the next word
-                setTimeout(() => searchAndDisplayWord(index + 1), 0);
-            }
+            // proceed to the next word
+            setTimeout(() => searchAndDisplayWord(index + 1), 0);
         }
     }
+}
 
-    // start searching and displaying videos for the first word
-    searchAndDisplayWord(0);
+// start searching and displaying videos for the first word
+searchAndDisplayWord(0);
 }
